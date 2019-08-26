@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNet.OData.Builder;
+using Microsoft.AspNet.OData.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -10,6 +12,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.OData.Edm;
+using ODataWithEDM.Model;
 
 namespace ODataWithEDM
 {
@@ -26,6 +30,8 @@ namespace ODataWithEDM
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddMvc(options => { options.EnableEndpointRouting = false; }); //hack
+            services.AddOData();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -42,7 +48,18 @@ namespace ODataWithEDM
             }
 
             app.UseHttpsRedirection();
-            app.UseMvc();
+            app.UseMvc(routerBuilder =>
+            {
+                routerBuilder.Select().Filter().OrderBy().Expand().Count().MaxTop(10);
+                routerBuilder.MapODataServiceRoute("api", "api", GetIedmModel());
+            });
+        }
+
+        private IEdmModel GetIedmModel()
+        {
+            var builder = new ODataConventionModelBuilder();
+            builder.EntitySet<Student>("Students");
+            return builder.GetEdmModel();
         }
     }
 }
